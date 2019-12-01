@@ -30,8 +30,17 @@ ser = serial.Serial(device,bitrate)
 # on_connect callback function
 def on_connect(client, userdata, flags, rc):
     print("연결이 완료되었습니다")
+# on_message callback function
+def on_message(client, userdata, msg):
+    print(msg) #print message
+    resetDevice() #reset Device
+
+
 
 # Formatting function for log time format
+def resetDevice():
+    print("리셋하는 함수")
+
 def clock():
     utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
     utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
@@ -41,7 +50,7 @@ def clock():
 
 client = mqtt.Client() #client config
 client.on_connect = on_connect # on_connect callback function config
-
+client.on_message = on_message # on_message callback function config
 client.connect(host=broker_address, port=broker_port) #server conncet
 
 client.loop_start() #loop start
@@ -51,5 +60,5 @@ while 1:
     log = timestamp + " / "+ str(logline) # log message fotmat [ timestamp / logmsg]
     print(log) # print for debug
     client.publish("log/" + idnum,log) # publish to "topic", log
-    
+    client.subscribe('command/' + idnum + '/reboot',1)
 
