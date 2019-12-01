@@ -5,12 +5,27 @@ import pytz
 import time
 import argparse
 
+# parameter parse
+
+parser = argparse.ArgumentParser(description='this program send log to server')
+parser.add_argument('--s', required=True, help=' ex) --s=log-server.local:1883')
+parser.add_argument('--p', required=True, help=' ex) --p=/dev/ttyACM0')
+parser.add_argument('--n', required=True, help=' ex) --n=id1')
+parser.add_argument('--b', required=False, default='115200', help=' ex) --b=1024')
+
+args =parser.parse_args()
+
+address = args.s.split(':') #split into  address & port 
+device = args.p
+bitrate = args.b
+idnum = args.n 
+
 #server address & port , mqtt default port 1883
-broker_address ='log-server.local'
-broker_port = 1883
+broker_address = str(address[0])
+broker_port = int(address[1])
 
 # serial communication config (device,bitrate)
-ser = serial.Serial('/dev/ttyACM0',115200) 
+ser = serial.Serial(device,bitrate) 
 
 # on_connect callback function
 def on_connect(client, userdata, flags, rc):
@@ -35,6 +50,6 @@ while 1:
     timestamp = clock() # get present time
     log = timestamp + " / "+ str(logline) # log message fotmat [ timestamp / logmsg]
     print(log) # print for debug
-    client.publish("log/id1",log) # publish to "topic", log
+    client.publish("log/" + idnum,log) # publish to "topic", log
     
 
