@@ -52,7 +52,7 @@ client = mqtt.Client() #client config
 client.on_connect = on_connect # on_connect callback function config
 client.on_message = on_message # on_message callback function config
 client.connect(host=broker_address, port=broker_port) #server conncet
-
+client.subscribe('command/' + idnum + '/reboot',1) #subscribe for reset
 client.loop_start() #loop start
 while 1: 
     logline = ser.readline() #read log from device
@@ -60,5 +60,4 @@ while 1:
     log = timestamp + " / "+ str(logline) # log message fotmat [ timestamp / logmsg]
     print(log) # print for debug
     client.publish("log/" + idnum,log) # publish to "topic", log
-    client.subscribe('command/' + idnum + '/reboot',1) # subscribe command/myID/reboot for reset
 
