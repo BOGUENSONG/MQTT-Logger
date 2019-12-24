@@ -8,8 +8,8 @@ import time
 broker_address ='log-server.local'
 broker_port = 1883
 
-# 토픽 설정과 bitrate설정
-ser = serial.Serial('/dev/ttyACM0',115200)
+# 시리얼통신 설정과 bitrate설정
+ser = serial.Serial('/dev/ttyACM0',115200) 
 
 # 서버와 연결시 실행되는 함수
 def on_connect(client, userdata, flags, rc):

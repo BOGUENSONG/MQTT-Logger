@@ -12,9 +12,9 @@ def on_connect(client, userdata, flags, rc):
 # message가 도착했을 때 실행되는 함수
 def on_message(client, userdata, msg):
     logmsg = str(msg.payload.decode('utf-8')) #로그메시지
-
+    folderName = "/app/usb/"
     idName = msg.topic.replace("log/","") # 메시지 보낸 장치의 토픽id
-    filename = "/app/usb/" + logmsg[0:10]+ "_" + idName + ".txt" # 저장할 파일명 YYYY-MM-DD_id#.txt의 형식
+    filename = folderName + logmsg[0:10]+ "_" + idName + ".txt" # 저장할 파일위치/YYYY-MM-DD_id#.txt의 형식 
     logfile = open(filename,'a')
     logfile.write(logmsg + "\n")
     logfile.close()
