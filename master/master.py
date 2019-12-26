@@ -6,7 +6,7 @@ import argparse
 parser = argparse.ArgumentParser(description='log server Master')
 parser.add_argument('--l', required=True, help='ex) --l=/app/usb')
 args = parser.parse_args()
-location = args.l
+location = str(args.l)
 
 # if server connect , call this function
 def on_connect(client, userdata, flags, rc):
@@ -19,7 +19,7 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     logmsg = str(msg.payload.decode('utf-8')) # logmessage from topic
     idName = msg.topic.replace("log/","") # message sender id
-    filename = location + logmsg[0:10]+ "_" + idName + ".txt" # folder/YYYY-MM-DD_id#.txt [saving format]
+    filename = location +'/'+ logmsg[0:10]+ "_" + idName + ".txt" # folder/YYYY-MM-DD_id#.txt [saving format]
     logfile = open(filename,'a') # open file
     logfile.write(logmsg + "\n") # write log
     logfile.close() # close file
