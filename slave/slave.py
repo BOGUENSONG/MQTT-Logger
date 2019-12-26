@@ -60,5 +60,5 @@ while 1:
     log = timestamp + " / "+ str(logline) # log message fotmat [ timestamp / logmsg]
     print(log) # print for debug
     client.publish("log/" + idnum,log) # publish to "topic", log
-    client.subscribe('command/' + idnum + '/reboot',1)
+    client.subscribe('command/' + idnum + '/reboot',1) # subscribe command/myID/reboot for reset
 
