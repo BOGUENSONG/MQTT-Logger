@@ -31,7 +31,7 @@ ser = serial.Serial(device,bitrate)
 
 # on_connect callback function
 def on_connect(client, userdata, flags, rc):
-    print("연결이 완료되었습니다")
+    print("서버와의 연결이 완료되었습니다")
 # on_message callback function
 def on_message(client, userdata, msg):
     resetDevice() #reset Device
