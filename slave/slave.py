@@ -107,7 +107,7 @@ def sendData():
 
     while True:
         block = f.read(256)
-        if block == '':
+        if block == b'':
             break
         resp = sendDataBlock(ser,addr,block)
         if resp == '':
