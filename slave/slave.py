@@ -4,6 +4,8 @@ import datetime
 import pytz
 import time
 import argparse
+import RPi.GPIO as GPIO
+
 
 # parameter parse
 
@@ -32,14 +34,21 @@ def on_connect(client, userdata, flags, rc):
     print("연결이 완료되었습니다")
 # on_message callback function
 def on_message(client, userdata, msg):
-    print(msg) #print message
     resetDevice() #reset Device
 
 
 
 # Formatting function for log time format
 def resetDevice():
-    print("리셋하는 함수")
+    print("setup 시작")
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(26,GPIO.IN,pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(26,GPIO.OUT,initial=0)
+    time.sleep(1) #1 sec stop
+    GPIO.output(26,1)
+    GPIO.cleanup()
+    print("setup 종료 ")
+
 
 def clock():
     utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
