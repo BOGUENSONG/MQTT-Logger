@@ -38,18 +38,18 @@ def on_message(client, userdata, msg):
 
 
 
-# Formatting function for log time format
+# reset function def
 def resetDevice():
     print("setup 시작")
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(26,GPIO.IN,pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(26,GPIO.OUT,initial=0)
+    GPIO.setmode(GPIO.BCM) # GPIO set BCM mode
+    GPIO.setup(26,GPIO.IN,pull_up_down=GPIO.PUD_UP) # GPIO number , in-out mode , pulldown set
+    GPIO.setup(26,GPIO.OUT,initial=0) 
     time.sleep(1) #1 sec stop
-    GPIO.output(26,1)
-    GPIO.cleanup()
+    GPIO.output(26,1) # GPIO number, 0 or 1 : output signal 1 or 0
+    GPIO.cleanup() # all GPIO to input mode
     print("setup 종료 ")
 
-
+# Formatting function for log time format
 def clock():
     utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
     utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
