@@ -34,10 +34,17 @@ def on_connect(client, userdata, flags, rc):
     print("서버와의 연결이 완료되었습니다")
 # on_message callback function
 def on_message(client, userdata, msg):
-    resetDevice() #reset Device
+    topic = msg.topic
+    topic_head = 'command/' + idnum
+    if (topic == topic_head  + "/reboot"):
+        resetDevice() #reset Device
+    elif (topic == topic_head + "/program/bin"):
+        sendProgram()
+    else:
+        print("unknown topic");
 
 
-
+##################################################################################################
 # reset function def
 def resetDevice():
     print("setup 시작")
@@ -49,6 +56,19 @@ def resetDevice():
     GPIO.cleanup() # all GPIO to input mode
     print("setup 종료 ")
 
+# program send method
+def sendProgram():
+    GPIO.setmode(GPIO.BCM) # GPIO set BCM mode
+    GPIO.setup(21,GPIO.IN,pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(21,GPIO.OUT,initial=0)
+    resetDevice()
+    time.sleep(3)
+    sendData()
+    
+# Date send method
+def sendData():
+    print("hi")
+
 # Formatting function for log time format
 def clock():
     utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
@@ -56,12 +76,14 @@ def clock():
     
     return datetime.datetime.now().replace(tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
 
+#####################################################################################################
 
 client = mqtt.Client() #client config
 client.on_connect = on_connect # on_connect callback function config
 client.on_message = on_message # on_message callback function config
 client.connect(host=broker_address, port=broker_port) #server conncet
 client.subscribe('command/' + idnum + '/reboot',1) #subscribe for reset
+client.subscribe('command/' + idnum + '/program/bin',1) #subscribe for bin
 client.loop_start() #loop start
 while 1: 
     logline = ser.readline() #read log from device
