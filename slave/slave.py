@@ -62,8 +62,6 @@ def sendProgram():
     GPIO.setup(21,GPIO.IN,pull_up_down=GPIO.PUD_UP)
     GPIO.setup(21,GPIO.OUT,initial=0)
     resetDevice()
-    time.sleep(3)
-    sendData()
     
 # Date send method
 def sendData():
