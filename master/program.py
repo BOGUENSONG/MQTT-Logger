@@ -13,9 +13,6 @@ args = parser.parse_args()
 deviceID = str(args.n)
 filename = str(args.b)
 dest = "command/" + deviceID + "/program/bin"
-message = "send " + filename
-
-
 # if server connect, call this function
 def on_connect(client, userdata, flags, rc):
     print("server connect success")
@@ -28,9 +25,10 @@ client = mqtt.Client() #produce client
 client.on_connect = on_connect #call back func
 client.on_publish = on_publish #call back func
 client.connect('log-server.local',1883) # connect to server
-
-client.publish(dest,message) # send message to topic
-
+f = open(filename,'rb')
+data = f.read()
+client.publish(dest,data) # send message to topic
+f.close()
 client.disconnect() #discconect server
 
 
