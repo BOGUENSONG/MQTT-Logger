@@ -40,7 +40,7 @@ def sendDataBlock(ser, addr, data):
     msg.append((addr >> 16) & 0xFF)
     msg += data
     resp = sendMessage(ser, msg, 0.1)
-#    print 'sendDataBlock<', ' '.join("%02x" % ord(b) for b in resp)
+    print 'sendDataBlock<', ' '.join("%02x" % ord(b) for b in resp)
     if len(resp) == 8 and resp[0] == '\x00' and resp[1] == '\x80' and resp[2] == '\x02' and resp[3] == '\x00' and resp[4] == '\x3b' and resp[5] == '\x00' and resp[6] == '\x60' and resp[7] == '\xc4':
         return resp
     else:
@@ -65,9 +65,9 @@ def sendReset(ser):
     return resp
 
 def printUsage():
-    print ('* Usage: %s {serial port} {binary file}' % sys.argv[0])
+    print '* Usage: %s {serial port} {binary file}' % sys.argv[0]
 
-print ('Nol.ja flasher version 0.5.2 for Nol.A supported boards.')
+print 'Nol.ja flasher version 0.5.2 for Nol.A supported boards.'
 
 if len(sys.argv) != 3:
     printUsage()
@@ -99,7 +99,7 @@ except IOError:
 
 
 resp = sendMassErase(ser)
-print ('Erasing...')
+print 'Erasing...'
 
 addr = 0
 written = 0
@@ -111,25 +111,25 @@ while True:
         break;
     resp = sendDataBlock(ser, addr, block)
     if resp == '':
-        print( sys.stderr, '* Communication Error')
+        print >> sys.stderr, '* Communication Error'
         sys.exit(3)
 
     written += len(block)
     addr += len(block)
 
-    print ('\r'),
+    print '\r',
     while printed > 0:
-        print(' '),
+        print ' ',
         printed -= 1
-    print ('\r'),
+    print '\r',
 
     p = 'Flashing: %.2f %% (%u / %u)' % (written * 100. / len(image), written, len(image))
     printed = len(p)
 #    print p
-    print (p),
+    print p,
     sys.stdout.flush()
 
-print ('')
+print ''
 
 myCrc = CRCCCITT(version='FFFF').calculate(image)
 resp = sendCRCCheck(ser, 0, len(image))
@@ -142,7 +142,7 @@ ser.close()
 f.close()
 
 if myCrc == devCrc:
-    print ('Integrity check passed.')
+    print 'Integrity check passed.'
     sys.exit(0)
 else:
     print >> sys.stderr, 'Integrity check failed.'

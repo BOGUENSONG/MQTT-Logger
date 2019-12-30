@@ -7,6 +7,7 @@ import argparse
 import RPi.GPIO as GPIO
 import time
 import binascii
+import sys
 from PyCRC.CRCCCITT import CRCCCITT
 
 # parameter parse
@@ -29,12 +30,19 @@ idnum = args.n
 broker_address = str(address[0])
 broker_port = int(address[1])
 
-# serial communication config (device,bitrate)
-ser = serial.Serial(device,bitrate) 
-
+#serial communication config (device,bitrate)
+ser = serial.Serial(port=device,
+        baudrate=bitrate,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        bytesize=serial.EIGHTBITS,
+        timeout=2)
+#msg = bytearray(b'\x15')
+#resp = sendMessage(ser, msg, 1)
+#print(ser.read(10))
 # on_connect callback function
 def on_connect(client, userdata, flags, rc):
-    print("서버와의 연결이 완료되었습니다")
+    print("server connect")
 # on_message callback function
 def on_message(client, userdata, msg):
     topic = msg.topic
@@ -50,23 +58,23 @@ def on_message(client, userdata, msg):
 ##################################################################################################
 # reset function def
 def resetDevice():
-    print("reset 시작")
+    print("reset start")
     GPIO.setmode(GPIO.BCM) # GPIO set BCM mode
     GPIO.setup(26,GPIO.IN,pull_up_down=GPIO.PUD_UP) # GPIO number , in-out mode , pulldown set
     GPIO.setup(26,GPIO.OUT,initial=0) 
     time.sleep(1) #1 sec stop
     GPIO.output(26,1) # GPIO number, 0 or 1 : output signal 1 or 0
     GPIO.cleanup() # all GPIO to input mode
-    print("reset 종료 ")
+    print("reset finish ")
 
 # program send method
 def sendProgram(msg):
-    print(" 파일을 받아옵니다")
+    print("file download...")
     data = msg.payload
     f = open('output.bin','wb')
     f.write(data)
     f.close()
-    print("파일을 받았습니다. 이제 시리얼통신을 시작합니다")
+    print("download complete. serial communication start")
     GPIO.setmode(GPIO.BCM) # GPIO set BCM mode
     GPIO.setup(21,GPIO.IN,pull_up_down=GPIO.PUD_UP)
     GPIO.setup(21,GPIO.OUT,initial=0)
@@ -75,20 +83,11 @@ def sendProgram(msg):
     sendData()
     GPIO.setup(21,GPIO.IN,pull_up_down=GPIO.PUD_UP)
     GPIO.cleanup()
+    print("all configuration complete")
 
     
 # Date send method
 def sendData():
-    try:
-        ser = serial.Serial(
-            device,
-            bitrate,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS,
-            timeout=2)
-    except serial.SerialException:
-        print("cannot open port.")
 
     try:
         f = open('output.bin','rb')
@@ -96,10 +95,10 @@ def sendData():
         f.seek(0)
 
     except IOError:
-        print("cannot open file")
+        print 'cannot open file'
 
     resp = sendMassErase(ser)
-    print('erasing...')
+    print 'erasing...'
     
     addr= 0
     written = 0
@@ -107,40 +106,42 @@ def sendData():
 
     while True:
         block = f.read(256)
-        if block == b'':
+        if block == '':
             break
         resp = sendDataBlock(ser,addr,block)
         if resp == '':
-            print('communication Error')
+            print 'communication Error'
+            sys.exit(3)
 
         written += len(block)
         addr += len(block)
 
-        #print('\r')
-        #while printed > 0:
-        #    print ()
-        #    printed -= 1
-        #print ('\r')
+        print '\r'
+        while printed > 0:
+            print ''
+            printed -= 1
+        print '\r'
 
         p = 'Flashing: %.2f %% (%u / %u)'% (written *100. / len(image), written, len(image))
         printed = len(p)
-        print(p)
+        print p,
+        sys.stdout.flush()
 
-    print()
-    MyCrc = CRCCCITT(version='FFFF').calculate(image)
+    print ''
+
+    myCrc = CRCCCITT(version='FFFF').calculate(image)
     resp = sendCRCCheck(ser, 0, len(image))
-
     devCrc = ord(resp[5]) + (ord(resp[6]) << 8)
+    #print 'CRC:0x%04x expected, but 0x%04x' % (myCrc, devCrc)
     resp = sendReset(ser)
-
-    ser.close()
     f.close()
 
     if myCrc == devCrc:
-        print("Integrity check passed.")
+        print "Integrity check passed."
+        sys.exit(0)
     else:
-        print("integrity check failed")
-
+        print "integrity check failed"
+        sys.exit(-1)
 # Formatting function for log time format
 def clock():
     utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
@@ -208,6 +209,13 @@ def sendReset(ser):
 
 
 ##################################################################################################
+#ser = serial.Serial(
+#        port=device,
+#        baudrate=bitrate,
+#        parity=serial.PARITY_NONE,
+#        stopbits=serial.STOPBITS_ONE,
+#        bytesize=serial.EIGHTBITS,
+#        timeout=2)
 client = mqtt.Client() #client config
 client.on_connect = on_connect # on_connect callback function config
 client.on_message = on_message # on_message callback function config
@@ -215,10 +223,10 @@ client.connect(host=broker_address, port=broker_port) #server conncet
 client.subscribe('command/' + idnum + '/reboot',1) #subscribe for reset
 client.subscribe('command/' + idnum + '/program/bin',1) #subscribe for bin
 client.loop_start() #loop start
-while 1: 
+while 1:
     logline = ser.readline() #read log from device
-    timestamp = clock() # get present time
-    log = timestamp + " / "+ str(logline) # log message fotmat [ timestamp / logmsg]
-    print(log) # print for debug
+    #timestamp = clock() # get present time
+    log = "20191212" + " / "+ logline # log message fotmat [ timestamp / logmsg]
+    print log, # print for debug
     client.publish("log/" + idnum,log) # publish to "topic", log
 
