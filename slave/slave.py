@@ -24,7 +24,8 @@ address = args.s.split(':') #split into  address & port
 device = args.p
 bitrate = args.b
 idnum = args.n 
-
+progress = 0
+fname = 'unknown'
 
 #server address & port , mqtt default port 1883
 broker_address = str(address[0])
@@ -50,9 +51,26 @@ def on_message(client, userdata, msg):
     if (topic == topic_head  + "/reboot"):
         resetDevice() #reset Device
     elif (topic == topic_head + "/program/bin"):
-        sendProgram(msg)
+        global progress
+        global fname
+        progress = 1
+
+        if (msg.qos == 0):
+            fname = msg.payload
+        else:
+            print'== canceling ser.readline() 3sec.... =='
+            time.sleep(3)
+            if (fname == 'unknown'):
+                progress = 0
+                print("file name down error")
+            else:
+                data = msg.payload
+                sendProgram(data,fname)
+                progress = 0
+                print'---bin download process Complete---'
+
     else:
-        print("unknown topic");
+        print("unknown topic")
 
 
 ##################################################################################################
@@ -68,10 +86,11 @@ def resetDevice():
     print("reset finish ")
 
 # program send method
-def sendProgram(msg):
+def sendProgram(data,filename):
     print("file download...")
-    data = msg.payload
-    f = open('output.bin','wb')
+    print("file name >>> " + filename)
+
+    f = open(filename,'wb')
     f.write(data)
     f.close()
     print("download complete. serial communication start")
@@ -80,17 +99,17 @@ def sendProgram(msg):
     GPIO.setup(21,GPIO.OUT,initial=0)
     resetDevice()
     time.sleep(3)
-    sendData()
+    sendData(filename)
+    GPIO.setmode(GPIO.BCM)
     GPIO.setup(21,GPIO.IN,pull_up_down=GPIO.PUD_UP)
     GPIO.cleanup()
-    print("all configuration complete")
 
     
 # Date send method
-def sendData():
+def sendData(filename):
 
     try:
-        f = open('output.bin','rb')
+        f = open(filename,'rb')
         image = f.read()
         f.seek(0)
 
@@ -138,16 +157,15 @@ def sendData():
 
     if myCrc == devCrc:
         print "Integrity check passed."
-        sys.exit(0)
     else:
         print "integrity check failed"
-        sys.exit(-1)
+
 # Formatting function for log time format
 def clock():
     utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
     utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
     
-    return datetime.datetime.now().replace(tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
+    return datetime.datetime.now().replace(tzinfo=pytz.utc).isoformat()
 
 #####################################################################################################
 # for transffer 
@@ -161,6 +179,7 @@ def sendMessage(ser, data, waitTime):
     msg.append((crc >> 0) & 0xFF)
     msg.append((crc >> 8) & 0xFF)
     ser.write(msg)
+    #print 'sendMessage>', ' '.join("%02x" % b for b in msg)
     time.sleep(waitTime)
     resp = []
     while True:
@@ -169,7 +188,7 @@ def sendMessage(ser, data, waitTime):
             break
         resp += r
         if ser.in_waiting == 0:
-            break
+            break  
     return resp
 
 def sendMassErase(ser):
@@ -209,24 +228,21 @@ def sendReset(ser):
 
 
 ##################################################################################################
-#ser = serial.Serial(
-#        port=device,
-#        baudrate=bitrate,
-#        parity=serial.PARITY_NONE,
-#        stopbits=serial.STOPBITS_ONE,
-#        bytesize=serial.EIGHTBITS,
-#        timeout=2)
+
 client = mqtt.Client() #client config
 client.on_connect = on_connect # on_connect callback function config
 client.on_message = on_message # on_message callback function config
 client.connect(host=broker_address, port=broker_port) #server conncet
 client.subscribe('command/' + idnum + '/reboot',1) #subscribe for reset
-client.subscribe('command/' + idnum + '/program/bin',1) #subscribe for bin
+client.subscribe('command/' + idnum + '/program/bin',1) #suscribe for bin file
 client.loop_start() #loop start
 while 1:
-    logline = ser.readline() #read log from device
-    #timestamp = clock() # get present time
-    log = "20191212" + " / "+ logline # log message fotmat [ timestamp / logmsg]
-    print log, # print for debug
-    client.publish("log/" + idnum,log) # publish to "topic", log
-
+    if (progress == 0):
+        logline = ser.readline() #read log from device when progress is not doing
+        timestamp = clock()
+        log = timestamp  + " / " + logline
+        print log,
+        client.publish("log/" + idnum,log)
+    else:
+        logline = "progress is busy now "
+        timestamp = clock() # get present time
