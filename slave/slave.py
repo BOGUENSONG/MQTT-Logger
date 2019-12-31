@@ -10,7 +10,7 @@ import binascii
 import sys
 from PyCRC.CRCCCITT import CRCCCITT
 
-# parameter parse
+# parameter parse###########################################################
 
 parser = argparse.ArgumentParser(description='this program send log to server')
 parser.add_argument('--s', required=True, help=' ex) --s=log-server.local:1883')
@@ -23,9 +23,12 @@ args =parser.parse_args()
 address = args.s.split(':') #split into  address & port 
 device = args.p
 bitrate = args.b
-idnum = args.n 
+idnum = args.n
+
+##################### flag for download bin ###############################
 progress = 0
 fname = 'unknown'
+###########################################################################
 
 #server address & port , mqtt default port 1883
 broker_address = str(address[0])
@@ -38,40 +41,38 @@ ser = serial.Serial(port=device,
         stopbits=serial.STOPBITS_ONE,
         bytesize=serial.EIGHTBITS,
         timeout=2)
-#msg = bytearray(b'\x15')
-#resp = sendMessage(ser, msg, 1)
-#print(ser.read(10))
+
 # on_connect callback function
 def on_connect(client, userdata, flags, rc):
     print("server connect")
+
 # on_message callback function
 def on_message(client, userdata, msg):
     topic = msg.topic
     topic_head = 'command/' + idnum
-    if (topic == topic_head  + "/reboot"):
-        resetDevice() #reset Device
-    elif (topic == topic_head + "/program/bin"):
-        global progress
-        global fname
-        progress = 1
+    if (topic == topic_head  + "/reboot"): # if message was received to reboot, exec this
+        resetDevice() 
+    elif (topic == topic_head + "/program/bin"): # if message was received to bin, exec this
+        global progress #for change global variable flag( stop ser.readline() in while)
+        global fname #for change global variable filename
+        progress = 1 #change value 0 -> 1
 
         if (msg.qos == 0):
-            fname = msg.payload
+            fname = msg.payload # filename save
         else:
             print'== canceling ser.readline() 3sec.... =='
-            time.sleep(3)
-            if (fname == 'unknown'):
+            time.sleep(3) #wait readline state change 3sec
+            if (fname == 'unknown'): #if filename didn't save, don't exec sendProgram
                 progress = 0
                 print("file name down error")
-            else:
+            else: # if filename receive successfull, then exec sendProgram
                 data = msg.payload
                 sendProgram(data,fname)
-                progress = 0
+                progress = 0 #if sendProgram is finished, then progress value change 1->0
                 print'---bin download process Complete---'
 
     else:
         print("unknown topic")
-
 
 ##################################################################################################
 # reset function def
@@ -87,6 +88,7 @@ def resetDevice():
 
 # program send method
 def sendProgram(data,filename):
+
     print("file download...")
     print("file name >>> " + filename)
 
@@ -94,12 +96,15 @@ def sendProgram(data,filename):
     f.write(data)
     f.close()
     print("download complete. serial communication start")
+    
     GPIO.setmode(GPIO.BCM) # GPIO set BCM mode
     GPIO.setup(21,GPIO.IN,pull_up_down=GPIO.PUD_UP)
     GPIO.setup(21,GPIO.OUT,initial=0)
+    
     resetDevice()
     time.sleep(3)
     sendData(filename)
+    
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(21,GPIO.IN,pull_up_down=GPIO.PUD_UP)
     GPIO.cleanup()
@@ -167,9 +172,11 @@ def clock():
     
     return datetime.datetime.now().replace(tzinfo=pytz.utc).isoformat()
 
-#####################################################################################################
-# for transffer 
-####################################################################################################
+###################################################################################################
+#                                                                                                 #
+# for transffer                                                                                   #
+#                                                                                                 #
+###################################################################################################
 def sendMessage(ser, data, waitTime):
     msg = bytearray(b'\x80')
     msg.append((len(data) >> 0) & 0xFF)
@@ -224,11 +231,9 @@ def sendReset(ser):
     resp = sendMessage(ser,msg,0)
     return resp
 
-
-
-
 ##################################################################################################
-
+            # Program Main #
+#################################################################################################
 client = mqtt.Client() #client config
 client.on_connect = on_connect # on_connect callback function config
 client.on_message = on_message # on_message callback function config
@@ -245,4 +250,3 @@ while 1:
         client.publish("log/" + idnum,log)
     else:
         logline = "progress is busy now "
-        timestamp = clock() # get present time
