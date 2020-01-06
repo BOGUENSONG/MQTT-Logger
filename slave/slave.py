@@ -8,6 +8,8 @@ import RPi.GPIO as GPIO
 import time
 import binascii
 import sys
+import subprocess
+import shlex
 from PyCRC.CRCCCITT import CRCCCITT
 
 # parameter parse###########################################################
@@ -50,11 +52,11 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     topic = msg.topic
     topic_head = 'command/' + idnum
+    global progress #for change global variable flag( stop ser.readline() in while
+    global fname #for change global variable filename
     if (topic == topic_head  + "/reboot"): # if message was received to reboot, exec this
         resetDevice() 
-    elif (topic == topic_head + "/program/bin"): # if message was received to bin, exec this
-        global progress #for change global variable flag( stop ser.readline() in while)
-        global fname #for change global variable filename
+    elif (topic == topic_head + "/nolja/bin"): # if message was received to bin, exec this
         progress = 1 #change value 0 -> 1
 
         if (msg.qos == 0):
@@ -70,7 +72,34 @@ def on_message(client, userdata, msg):
                 sendProgram(data,fname)
                 progress = 0 #if sendProgram is finished, then progress value change 1->0
                 print'---bin download process Complete---'
+    elif (topic == topic_head + "/kflash/bit_mic"):
+        progress = 1 #change value 0 -> 1
+        if (msg.qos ==0):
+            fname = msg.payload
+        else:
+            print 'state changing...wait 3sec...'
+            time.sleep(3) #wait readline state change 3sec
+            if (fname == 'unknown'):
+                progress = 0
+                print("file name down err")
+            else:
+                data = msg.payload
 
+                print("file download...")
+                print("file name >>> " + fname)
+                f = open(fname,'wb')
+                f.write(data)
+                f.close()
+                print("download complete. serial communication start")
+                ser.close() #serial communication close.
+
+                run_command(["python3","kflash.py",fname,"-p="+device,"-B=bit_mic"])
+                print("OK")
+                ser.open()
+                progress = 0
+    elif (topic == topic_head + "/kflash/dan"):
+        ser.close()
+        ser.open()
     else:
         print("unknown topic")
 
@@ -171,6 +200,17 @@ def clock():
     utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
     
     return datetime.datetime.now().replace(tzinfo=pytz.utc).isoformat()
+# print subprogram's log
+def run_command(command):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    while True:
+        output = process.stdout.readline()
+        if output == '' and process.poll() is not None:
+            break;
+        if output:
+            print (output.strip())
+    rc = process.poll()
+    return rc
 
 ###################################################################################################
 #                                                                                                 #
@@ -238,8 +278,7 @@ client = mqtt.Client() #client config
 client.on_connect = on_connect # on_connect callback function config
 client.on_message = on_message # on_message callback function config
 client.connect(host=broker_address, port=broker_port) #server conncet
-client.subscribe('command/' + idnum + '/reboot',1) #subscribe for reset
-client.subscribe('command/' + idnum + '/program/bin',1) #suscribe for bin file
+client.subscribe('command/' + idnum + '/#',1) #suscribe for bin file
 client.loop_start() #loop start
 while 1:
     if (progress == 0):
