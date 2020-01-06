@@ -5,45 +5,25 @@ import pytz
 import time
 import argparse
 import RPi.GPIO as GPIO
-import time
 import binascii
 import sys
 import subprocess
-import shlex
 from PyCRC.CRCCCITT import CRCCCITT
+############################################################################
 
-# parameter parse###########################################################
+# serial : for serial communication
+# paho.mqtt.client : for mqtt communication
+# datetime : for log date generate
+# pytz : for log date generate
+# time : for time.sleep and log date
+# argparse: for system argument parse
+# GPIO : for using RaspberryPi GPIO
+# binascii : for using binary ascii code
+# sys : for exit and flush
+# subprocess : for run another python program
+# PyCRC.CRCCCITT : for check file accuracy
 
-parser = argparse.ArgumentParser(description='this program send log to server')
-parser.add_argument('--s', required=True, help=' ex) --s=log-server.local:1883')
-parser.add_argument('--p', required=True, help=' ex) --p=/dev/ttyACM0')
-parser.add_argument('--n', required=True, help=' ex) --n=id1')
-parser.add_argument('--b', required=False, default='115200', help=' ex) --b=1024')
-
-args =parser.parse_args()
-
-address = args.s.split(':') #split into  address & port 
-device = args.p
-bitrate = args.b
-idnum = args.n
-
-##################### flag for download bin ###############################
-progress = 0
-fname = 'unknown'
 ###########################################################################
-
-#server address & port , mqtt default port 1883
-broker_address = str(address[0])
-broker_port = int(address[1])
-
-#serial communication config (device,bitrate)
-ser = serial.Serial(port=device,
-        baudrate=bitrate,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.EIGHTBITS,
-        timeout=2)
-
 # on_connect callback function
 def on_connect(client, userdata, flags, rc):
     print("server connect")
@@ -56,7 +36,7 @@ def on_message(client, userdata, msg):
     global fname #for change global variable filename
     if (topic == topic_head  + "/reboot"): # if message was received to reboot, exec this
         resetDevice() 
-    elif (topic == topic_head + "/nolja/bin"): # if message was received to bin, exec this
+    else : # if message was received to bin, exec this
         progress = 1 #change value 0 -> 1
 
         if (msg.qos == 0):
@@ -69,39 +49,16 @@ def on_message(client, userdata, msg):
                 print("file name down error")
             else: # if filename receive successfull, then exec sendProgram
                 data = msg.payload
-                sendProgram(data,fname)
+                if (topic == topic_head + "/nolja/bin"):
+                    sendProgram(data,fname)
+                elif (topic == topic_head + "/kflash/bit_mic"):
+                    sendCamProgram(data,fname,"bit_mic")
+                elif (topic == topic_head + "/kflash/dan"):
+                    sendCamProgram(data,fname,"dan")
+                else:
+                    print(" Error [Unknown topic received] please check topic : " + topic )
                 progress = 0 #if sendProgram is finished, then progress value change 1->0
                 print'---bin download process Complete---'
-    elif (topic == topic_head + "/kflash/bit_mic"):
-        progress = 1 #change value 0 -> 1
-        if (msg.qos ==0):
-            fname = msg.payload
-        else:
-            print 'state changing...wait 3sec...'
-            time.sleep(3) #wait readline state change 3sec
-            if (fname == 'unknown'):
-                progress = 0
-                print("file name down err")
-            else:
-                data = msg.payload
-
-                print("file download...")
-                print("file name >>> " + fname)
-                f = open(fname,'wb')
-                f.write(data)
-                f.close()
-                print("download complete. serial communication start")
-                ser.close() #serial communication close.
-
-                run_command(["python3","kflash.py",fname,"-p="+device,"-B=bit_mic"])
-                print("OK")
-                ser.open()
-                progress = 0
-    elif (topic == topic_head + "/kflash/dan"):
-        ser.close()
-        ser.open()
-    else:
-        print("unknown topic")
 
 ##################################################################################################
 # reset function def
@@ -212,6 +169,19 @@ def run_command(command):
     rc = process.poll()
     return rc
 
+# send CamProgram function
+def sendCamProgram(data,fname,camDevice):
+    print(" bin file Download... ")
+    print(" file name >>>" + fname)
+    f = open(fname,'wb')
+    f.write(data)
+    f.close()
+    print(" bin file download Complete. Now, serial Communication stop")
+    ser.close()
+    run_command(["python3","kflash.py",fname,"-p="+device,"-B="+camDevice])
+    print(" kflash.py Finish. now, restart serial Communication")
+    ser.open()
+
 ###################################################################################################
 #                                                                                                 #
 # for transffer                                                                                   #
@@ -272,8 +242,39 @@ def sendReset(ser):
     return resp
 
 ##################################################################################################
-            # Program Main #
-#################################################################################################
+         # Program Main #
+###########################################################################
+            #  parameter parse#
+parser = argparse.ArgumentParser(description='this program send log to server')
+parser.add_argument('--s', required=True, help=' ex) --s=log-server.local:1883')
+parser.add_argument('--p', required=True, help=' ex) --p=/dev/ttyACM0')
+parser.add_argument('--n', required=True, help=' ex) --n=id1')
+parser.add_argument('--b', required=False, default='115200', help=' ex) --b=1024')
+ 
+args =parser.parse_args()
+
+address = args.s.split(':') #split into  address & port 
+device = args.p #device location 
+bitrate = args.b #bitrate ex) 1024 : 1kb
+idnum = args.n # idnumber ex) id1
+
+            # FLAG for program transfer
+progress = 0 #if progress 1, Don't readline from serial port
+fname = 'unknown' #if fname is unknown, that means there was no file transfer
+
+            #server address & port , mqtt default port 1883
+broker_address = str(address[0])
+broker_port = int(address[1])
+
+            #serial communication config (device,bitrate)
+ser = serial.Serial(port=device,
+        baudrate=bitrate,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        bytesize=serial.EIGHTBITS,
+        timeout=2)
+
+            #client config (connect, callback, subscribe, publish)
 client = mqtt.Client() #client config
 client.on_connect = on_connect # on_connect callback function config
 client.on_message = on_message # on_message callback function config
