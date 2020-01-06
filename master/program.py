@@ -2,6 +2,14 @@ import paho.mqtt.client as mqtt
 import argparse
 import time
 
+# if server connect, call this function
+def on_connect(client, userdata, flags, rc):
+    print("server connect success")
+# if publish, call this function
+def on_publish(client, userdata, mid):
+    print("\033[32m" +"send success to id= " + deviceID)
+
+
 serverIP = 'log-server.local'
 serverPort = 1883 
 
@@ -37,13 +45,6 @@ while True:
         break
     else:
         print("\nWrong Number Choose another one\n")
-# if server connect, call this function
-def on_connect(client, userdata, flags, rc):
-    print("server connect success")
-# if publish, call this function
-def on_publish(client, userdata, mid):
-    print("send success to id= " + deviceID)
-
 
 client = mqtt.Client() #produce client
 client.on_connect = on_connect #call back func
