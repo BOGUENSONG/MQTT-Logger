@@ -9,6 +9,14 @@ import binascii
 import sys
 import subprocess
 from PyCRC.CRCCCITT import CRCCCITT
+
+C_BOLD = "\033[1m" #console message bold
+C_YELLOW = "\033[33m" #console message yellow
+C_GREEN = "\033[32m" #green
+C_CYAN = "\033[36m" #skyblue
+C_WHITE = "\033[37m" #white
+C_END = "\033[0m" #clear all effect
+
 ############################################################################
 
 # serial : for serial communication
@@ -42,12 +50,13 @@ def on_message(client, userdata, msg):
         if (msg.qos == 0):
             fname = msg.payload # filename save
         else:
+            print C_BOLD + '\n---------------------------------------------------'
             print'== canceling ser.readline() 3sec.... =='
             time.sleep(3) #wait readline state change 3sec
-            if (fname == 'unknown'): #if filename didn't save, don't exec sendProgram
+            if (fname == 'unknown'): #if filename is unknown, that means program wasn't received file name
                 progress = 0
                 print("file name down error")
-            else: # if filename receive successfull, then exec sendProgram
+            else: # if filename receive successfull, then run sendProgram
                 data = msg.payload
                 if (topic == topic_head + "/nolja/bin"):
                     sendProgram(data,fname)
@@ -58,7 +67,9 @@ def on_message(client, userdata, msg):
                 else:
                     print(" Error [Unknown topic received] please check topic : " + topic )
                 progress = 0 #if sendProgram is finished, then progress value change 1->0
-                print'---bin download process Complete---'
+                print '---bin download process Complete---'
+                print C_BOLD + C_WHITE + '---------------------------------------------------'
+                print C_END
 
 ##################################################################################################
 # reset function def
@@ -171,15 +182,15 @@ def run_command(command):
 
 # send CamProgram function
 def sendCamProgram(data,fname,camDevice):
-    print(" bin file Download... ")
-    print(" file name >>>" + fname)
-    f = open(fname,'wb')
+    print(C_YELLOW + "\nbin file Download... ")
+    print(C_CYAN + "file name >>> " + fname)
+    f = open( fname,'wb')
     f.write(data)
     f.close()
-    print(" bin file download Complete. Now, serial Communication stop")
+    print(C_CYAN + "bin file download Complete. Now, serial Communication stop")
     ser.close()
     run_command(["python3","kflash.py",fname,"-p="+device,"-B="+camDevice])
-    print(" kflash.py Finish. now, restart serial Communication")
+    print(C_CYAN + " kflash.py Finish. now, restart serial Communication")
     ser.open()
 
 ###################################################################################################
