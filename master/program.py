@@ -8,6 +8,7 @@ def on_connect(client, userdata, flags, rc):
 # if publish, call this function
 def on_publish(client, userdata, mid):
     print("\033[32m" +"send success to id= " + deviceID)
+    print("\033[0m")
 
 
 serverIP = 'log-server.local'
@@ -45,6 +46,7 @@ while True:
         break
     else:
         print("\nWrong Number Choose another one\n")
+        
 
 client = mqtt.Client() #produce client
 client.on_connect = on_connect #call back func
