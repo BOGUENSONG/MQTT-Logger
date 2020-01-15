@@ -44,7 +44,7 @@ def on_message(client, userdata, msg):
     global fname #for change global variable filename
     if (topic == topic_head  + "/reboot"): # if message was received to reboot, exec this
         resetDevice() 
-    else : # if message was received to bin, exec this
+    else : # if flash downloader  message was received, run this
         progress = 1 #change value 0 -> 1
 
         if (msg.qos == 0):
@@ -52,7 +52,7 @@ def on_message(client, userdata, msg):
         else:
             print C_BOLD + '\n---------------------------------------------------'
             print'== canceling ser.readline() 3sec.... =='
-            time.sleep(3) #wait readline state change 3sec
+            time.sleep(3) #wait 3sec for readline state change
             if (fname == 'unknown'): #if filename is unknown, that means program wasn't received file name
                 progress = 0
                 print("file name down error")
@@ -66,6 +66,7 @@ def on_message(client, userdata, msg):
                     sendCamProgram(data,fname,"dan")
                 else:
                     print(" Error [Unknown topic received] please check topic : " + topic )
+                fname = 'unknown' #after program finish, reset fname value
                 progress = 0 #if sendProgram is finished, then progress value change 1->0
                 print '---bin download process Complete---'
                 print C_BOLD + C_WHITE + '---------------------------------------------------'
