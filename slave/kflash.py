@@ -1080,6 +1080,8 @@ class KFlash:
                     # Download a dataframe
                     #KFlash.log('[INFO]', 'Write firmware data piece')
                     self.dump_to_flash(chunk, address= n * ISP_FLASH_DATA_FRAME_SIZE + address_offset)
+                    # DEBUG address_offset
+                    print( "[DEBUG] address_offset : 0x%x" % address_offset)
                     columns, lines = TerminalSize.get_terminal_size((100, 24), terminal)
                     time_delta = time.time() - time_start
                     speed = ''
@@ -1121,6 +1123,7 @@ class KFlash:
             parser.add_argument("-s", "--sram", help="Download firmware to SRAM and boot", default=False, action="store_true")
             parser.add_argument("-B", "--Board",required=False, type=str, help="Select dev board", choices=boards_choices)
             parser.add_argument("-S", "--Slow",required=False, help="Slow download mode", default=False)
+            parser.add_argument("-A", "--address",required=False, help="put start address default is 0x00000", default="0")
             parser.add_argument("firmware", help="firmware bin path")
             args = parser.parse_args()
         else:
@@ -1136,6 +1139,7 @@ class KFlash:
             setattr(args, "sram", False)
             setattr(args, "Board", None)
             setattr(args, "Slow", False)
+            setattr(args, "address", "0")
 
         # udpate args for none terminal call
         if not terminal:
@@ -1401,9 +1405,9 @@ class KFlash:
                 if len(aes_key) != 16:
                     raise_exception( ValueError('AES key must by 16 bytes') )
 
-                self.loader.flash_firmware(firmware_bin.read(), aes_key=aes_key)
+                self.loader.flash_firmware(firmware_bin.read(), address_offset= int(args.address,0), aes_key=aes_key)
             else:
-                self.loader.flash_firmware(firmware_bin.read())
+                self.loader.flash_firmware(firmware_bin.read(), address_offset= int(args.address,0))
 
         # 3. boot
         if args.Board == "dan" or args.Board == "bit" or args.Board == "trainer":
