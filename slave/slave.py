@@ -8,6 +8,7 @@ import RPi.GPIO as GPIO
 import binascii
 import sys
 import subprocess
+import json
 from PyCRC.CRCCCITT import CRCCCITT
 
 C_BOLD = "\033[1m" #console message bold
@@ -30,7 +31,7 @@ C_END = "\033[0m" #clear all effect
 # sys : for exit and flush
 # subprocess : for run another python program
 # PyCRC.CRCCCITT : for check file accuracy
-
+# json : for receive fileinfo and convert bytearray -> dictionary
 ###########################################################################
 # on_connect callback function
 def on_connect(client, userdata, flags, rc):
@@ -42,13 +43,19 @@ def on_message(client, userdata, msg):
     topic_head = 'command/' + idnum
     global progress #for change global variable flag( stop ser.readline() in while
     global fname #for change global variable filename
+    global offset # for change offset value
+
     if (topic == topic_head  + "/reboot"): # if message was received to reboot, exec this
         resetDevice() 
     else : # if flash downloader  message was received, run this
         progress = 1 #change value 0 -> 1
 
         if (msg.qos == 0):
-            fname = msg.payload # filename save
+            bindata = msg.payload 
+            fileinfo = binary_to_dict(bindata) # convert bytearray to dictionary
+            
+            fname = fileinfo["filename"] # filename save
+            offset = fileinfo["address"] # offset save
         else:
             print C_BOLD + '\n---------------------------------------------------'
             print'== canceling ser.readline() 3sec.... =='
@@ -61,9 +68,9 @@ def on_message(client, userdata, msg):
                 if (topic == topic_head + "/nolja/bin"):
                     sendProgram(data,fname)
                 elif (topic == topic_head + "/kflash/bit_mic"):
-                    sendCamProgram(data,fname,"bit_mic")
+                    sendCamProgram(data,fname,"bit_mic",offset)
                 elif (topic == topic_head + "/kflash/dan"):
-                    sendCamProgram(data,fname,"dan")
+                    sendCamProgram(data,fname,"dan",offset)
                 else:
                     print(" Error [Unknown topic received] please check topic : " + topic )
                 fname = 'unknown' #after program finish, reset fname value
@@ -182,7 +189,7 @@ def run_command(command):
     return rc
 
 # send CamProgram function
-def sendCamProgram(data,fname,camDevice):
+def sendCamProgram(data,fname,camDevice,offset):
     print(C_YELLOW + "\nbin file Download... ")
     print(C_CYAN + "file name >>> " + fname)
     f = open( fname,'wb')
@@ -190,7 +197,7 @@ def sendCamProgram(data,fname,camDevice):
     f.close()
     print(C_CYAN + "bin file download Complete. Now, serial Communication stop")
     ser.close()
-    run_command(["python3","kflash.py",fname,"-p="+device,"-B="+camDevice])
+    run_command(["python3","kflash.py",fname,"-p="+device,"-B="+camDevice,"-A="+offset])
     print(C_CYAN + " kflash.py Finish. now, restart serial Communication")
     ser.open()
 
@@ -253,6 +260,11 @@ def sendReset(ser):
     resp = sendMessage(ser,msg,0)
     return resp
 
+def binary_to_dict(binary_data):
+    jsn = ''.join(chr(int(x, 2)) for x in binary_data.split())
+    dic = json.loads(jsn)
+    return dic
+
 ##################################################################################################
          # Program Main #
 ###########################################################################
@@ -273,6 +285,7 @@ idnum = args.n # idnumber ex) id1
             # FLAG for program transfer
 progress = 0 #if progress 1, Don't readline from serial port
 fname = 'unknown' #if fname is unknown, that means there was no file transfer
+offset = '0'
 
             #server address & port , mqtt default port 1883
 broker_address = str(address[0])
