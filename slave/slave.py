@@ -43,7 +43,7 @@ def on_message(client, userdata, msg):
     topic_head = 'command/' + idnum
     global progress #for change global variable flag( stop ser.readline() in while
     global fname #for change global variable filename
-    global offset # for change offset value
+    #global offset # for change offset value
 
     if (topic == topic_head  + "/reboot"): # if message was received to reboot, exec this
         resetDevice() 
@@ -51,11 +51,12 @@ def on_message(client, userdata, msg):
         progress = 1 #change value 0 -> 1
 
         if (msg.qos == 0):
-            bindata = msg.payload 
-            fileinfo = binary_to_dict(bindata) # convert bytearray to dictionary
+            #bindata = msg.payload 
+            #fileinfo = binary_to_dict(bindata) # convert bytearray to dictionary
             
-            fname = fileinfo["filename"] # filename save
-            offset = fileinfo["address"] # offset save
+            fname = msg.payload
+            #fname = fileinfo["filename"] # filename save
+            #offset = fileinfo["address"] # offset save
         else:
             print C_BOLD + '\n---------------------------------------------------'
             print'== canceling ser.readline() 3sec.... =='
@@ -68,9 +69,11 @@ def on_message(client, userdata, msg):
                 if (topic == topic_head + "/nolja/bin"):
                     sendProgram(data,fname)
                 elif (topic == topic_head + "/kflash/bit_mic"):
-                    sendCamProgram(data,fname,"bit_mic",offset)
+                    #sendCamProgram(data,fname,"bit_mic",offset)
+                    sendCamProgram(data,fname,"bit_mic")
                 elif (topic == topic_head + "/kflash/dan"):
-                    sendCamProgram(data,fname,"dan",offset)
+                    #sendCamProgram(data,fname,"dan",offset)
+                    sendCamProgram(data,fname,"dan")
                 else:
                     print(" Error [Unknown topic received] please check topic : " + topic )
                 fname = 'unknown' #after program finish, reset fname value
@@ -189,15 +192,19 @@ def run_command(command):
     return rc
 
 # send CamProgram function
-def sendCamProgram(data,fname,camDevice,offset):
+#def sendCamProgram(data,fname,camDevice,offset):
+def sendCamProgram(data,fname,camDevice):
     print(C_YELLOW + "\nbin file Download... ")
-    print(C_CYAN + "file name >>> " + fname)
-    f = open( fname,'wb')
+    print(C_CYAN + "file origin name >>> [ " + fname + " ] but receive temp.kfpkg")
+    #f = open(fname,'wb')
+    f = open("temp.kfpkg",'wb')
     f.write(data)
     f.close()
     print(C_CYAN + "bin file download Complete. Now, serial Communication stop")
     ser.close()
-    run_command(["python3","kflash.py",fname,"-p="+device,"-B="+camDevice,"-A="+offset])
+    #run_command(["python3","kflash.py",fname,"-p="+device,"-B="+camDevice,"-A="+offset])
+    run_command(["python3","kflash.py","temp.kfpkg","-p="+device,"-B="+camDevice])
+
     print(C_CYAN + " kflash.py Finish. now, restart serial Communication")
     ser.open()
 
