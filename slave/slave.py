@@ -318,7 +318,6 @@ while 1:
         logline = ser.readline() #read log from device when progress is not doing
         timestamp = clock()
         log = timestamp  + " / " + logline
-        print log,
-        client.publish("log/" + idnum,log)
-    else:
-        logline = "progress is busy now "
+        if(logline != ""):
+            print log,
+            client.publish("log/" + idnum,log)
