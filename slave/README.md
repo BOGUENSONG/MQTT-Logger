@@ -6,9 +6,12 @@
 #### [>> Click <<](https://github.com/kendryte/kflash.py)
 ------------------------------------------
 ### 2. slave.py
+
+
 [ 바이너리 파일 flash, 장비 리셋등 gpio 혹은 serial 통신으로 연결된 장비 관리 프로그램 ]
 
- - 라이브러리 : mqtt, serial, RPi.GPIO
+ - 라이브러리 : mqtt, serial, RPi.GPIO, pytz
+ - 실행환경 : 라즈베리파이, python2
  - 파라미터 : --s 서버주소, --p 장비위치, --n 장비이름
 ```
  예) $ python slave.py --s=log-server.local:1883 --p=/dev/ttyUSB0 --n=id1
